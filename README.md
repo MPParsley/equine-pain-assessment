@@ -132,6 +132,41 @@ Deploys the Gradio app to HuggingFace Spaces. Requires `HF_TOKEN` secret.
 └── .github/workflows/ # CI, training, deployment
 ```
 
+## Hardware Requirements
+
+### Training
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| **GPU VRAM** | 4 GB (batch size 8) | 8+ GB (batch size 16) |
+| **System RAM** | 8 GB | 16 GB |
+| **Disk** | 2 GB (model + dataset) | 5 GB (with checkpoints) |
+| **GPU** | NVIDIA GTX 1650 / T4 | NVIDIA RTX 3060 / A10G |
+
+**Estimated training time** (10 epochs, ~1,500 images, batch size 16):
+
+| Hardware | Time per epoch | Total |
+|----------|---------------|-------|
+| NVIDIA T4 (16 GB) | ~2 min | ~20 min |
+| NVIDIA RTX 3060 (12 GB) | ~1.5 min | ~15 min |
+| NVIDIA A100 (40 GB) | ~30 sec | ~5 min |
+| CPU only (8-core) | ~15 min | ~2.5 hrs |
+
+- The ViT-Base model has **86M parameters** (~330 MB in FP32). During training, optimizer states and gradients bring peak memory to roughly **3x model size** (~1 GB) plus batch activations.
+- If you run out of GPU memory, reduce `--batch-size` (halving it roughly halves VRAM for activations) or use gradient accumulation.
+- **CPU-only training** is supported but significantly slower. Set `num_workers=0` if you encounter memory issues on low-RAM machines.
+- **Free GPU options**: Google Colab (T4), Kaggle Notebooks (P100/T4), or the GitHub Actions workflow (CPU, suitable for small datasets).
+
+### Inference
+
+| Resource | Minimum |
+|----------|---------|
+| **GPU VRAM** | Not required (CPU works fine) |
+| **System RAM** | 4 GB |
+| **Disk** | 500 MB (model weights + dependencies) |
+
+Inference runs in <1 second per image on CPU; a GPU is not required but speeds up batch processing.
+
 ## Architecture
 
 - **Backbone**: Vision Transformer (ViT-Base, patch size 16, 224x224) from Google, pre-trained on ImageNet
