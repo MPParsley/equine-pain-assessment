@@ -1,0 +1,63 @@
+name: Deploy to HuggingFace Spaces
+
+on:
+  workflow_dispatch:
+    inputs:
+      space_id:
+        description: "HuggingFace Space ID (e.g., username/equine-pain-assessment)"
+        required: true
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install huggingface_hub
+        run: pip install huggingface-hub
+
+      - name: Determine Space ID
+        id: space
+        run: |
+          if [ -n "${{ github.event.inputs.space_id }}" ]; then
+            echo "id=${{ github.event.inputs.space_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "id=${{ github.repository_owner }}/equine-pain-assessment" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to HuggingFace Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+
+          # Create space if it doesn't exist
+          try:
+              api.create_repo(
+                  repo_id='${{ steps.space.outputs.id }}',
+                  repo_type='space',
+                  space_sdk='gradio',
+                  exist_ok=True,
+              )
+          except Exception as e:
+              print(f'Note: {e}')
+
+          # Upload repository contents
+          api.upload_folder(
+              folder_path='.',
+              repo_id='${{ steps.space.outputs.id }}',
+              repo_type='space',
+              ignore_patterns=['.git*', 'data/*', 'models/*', '__pycache__', '*.pyc', 'tests/*'],
+          )
+          print('Deployed to https://huggingface.co/spaces/${{ steps.space.outputs.id }}')
+          "
